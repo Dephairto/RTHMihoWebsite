@@ -1,42 +1,67 @@
 import { useState } from "react";
-import { Image } from "react-bootstrap";
 
+import MuiMarkdown from "mui-markdown";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkUnwrapImages from "remark-unwrap-images";
 
-import "./anchor.css";
+import { CardMedia, Box } from "@mui/material";
+import { Typography } from "@mui/material";
 
 function fileToString(url, callback) {
-    fetch(url)
-        .then(file => file.text())
-        .then(text => callback(text));
+  fetch(url)
+    .then(file => file.text())
+    .then(text => callback(text));
 }
 
 export default function Markdown(props) {
-    const [content, setContent] = useState("");
+  const [content, setContent] = useState("");
 
-    fileToString(
-        require(`../res${props.url}/md.md`),
-        text => { setContent(text); }
-    );
+  fileToString(
+    require(`../res/${props.url}/md.md`),
+    text => { setContent(text); }
+  );
 
+  if (props.TOC) {
     return (
-        <ReactMarkdown
-            children={content}
-            remarkPlugins={[remarkGfm, remarkUnwrapImages]}
-            transformImageUri={
-                uri => uri.startsWith("http") ? uri : require(`../res${props.url}/${uri}`)
-            }
-            components={{
-                img : props => <Image alt={props.alt} src={props.src} fluid/>,
-                h1 : props => <h1 id={props.children} >{props.children}</h1>,
-                h2 : props => <h2 id={props.children} >{props.children}</h2>,
-                h3 : props => <h3 id={props.children} >{props.children}</h3>,
-                h4 : props => <h4 id={props.children} >{props.children}</h4>,
-                h5 : props => <h5 id={props.children} >{props.children}</h5>,
-                h6 : props => <h6 id={props.children} >{props.children}</h6>,
-            }}
-        />
+      <ReactMarkdown
+        children={content}
+        allowedElements={["h2"]}
+        components={{ h2: props.TOC }}
+      />
     );
+  }
+
+  return (
+    <Box sx={{ p: { xs: 3, md: 5 } }} >
+      <MuiMarkdown
+        children={content}
+        overrides={{
+          h1: { component: Typo("h2") },
+          h2: { component: Typo("h3") },
+          h3: { component: Typo("h4") },
+          p: { component: Typo("paragraph", "2em") },
+          img: {
+            component: prop => <CardMedia
+              component="img"
+              image={(() => {
+                try {
+                  return (prop.src.startsWith("http")) ? prop.src : require(`../res/${props.url}/${prop.src}`)
+                } catch (e) {
+                  return undefined;
+                }
+              })()}
+              alt={prop.alt}
+            />
+          }
+        }}
+      />
+    </Box>
+  );
+}
+
+const Typo = (type, indent) => (props) => {
+  return (
+    <Typography variant={type} paragraph={type === "paragraph"} sx={{ mb: 2, mt: 2, textIndent: indent }} id={props.children} >
+      {props.children}
+    </Typography>
+  );
 }
